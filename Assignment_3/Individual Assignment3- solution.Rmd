@@ -1,0 +1,189 @@
+---
+title: "Individual Assignment3- Simple Linear Regression"
+output: word_document
+---
+	
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+```
+
+```{r echo=FALSE}
+
+#dataset <- read.csv('C:\\Users\\SALONI\\OneDrive - University of Waterloo\\MSCI 718\\i-3\\complaints-BOA.csv')
+dataset <- read.csv('C:\\Users\\SALONI\\OneDrive - University of Waterloo\\MSCI 718\\i-3\\complaints-final.csv')
+#dataset <- read.csv('C:\\Users\\SALONI\\OneDrive - University of Waterloo\\MSCI 718\\i-3\\complaints-reverse_mortgage.csv')
+```
+
+
+```{r echo=FALSE}
+dataset<- dataset %>% filter(Company=="BANK OF AMERICA, NATIONAL ASSOCIATION")
+
+#dataset<- dataset %>% filter(Product=="Credit card" |Product== "Checking or saving account")#Product=="Bank account or service"|
+#dataset<- dataset %>% filter(Product=="Bank account or service" | Product== "Checking or saving account")
+
+#count(dataset)
+dataset <- na.omit(dataset)
+#count(dataset)
+
+dataset<-dataset %>% separate(Date.received, c("Split_Month","Split_Day","Split_Year"),remove=FALSE)
+
+```
+
+
+```{r echo=FALSE}
+dataset$Split_Year<- as.integer(dataset$Split_Year)
+dataset$Split_Month <- as.integer(dataset$Split_Month)
+dataset$Split_Year <- (dataset$Split_Year + 2000)
+
+
+
+```
+
+```{r echo=FALSE}
+all_years<-c(2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021)
+all_months<-c(1,2,3,4,5,6,7,8,9,10,11,12)
+all_quaters<-c(1,2,3,4)
+```
+
+
+```{r echo=FALSE}
+dataset<- dataset %>%  filter(Split_Year!=2012 | Split_Month !=3)
+df <- NULL
+no_of_quarter <- 0
+for (year in all_years) {
+  for (quarter in all_quaters) {
+    if(quarter==1){
+       m1=1;m2=2;m3=3;
+    }
+    if(quarter==2){
+       m1=4;m2=5;m3=6;
+    }
+    if(quarter==3){
+       m1=7;m2=8;m3=9;
+    }
+    if(quarter==4){
+       m1=10;m2=11;m3=12;
+    }
+    complains <- count(dataset %>% filter((Split_Month==m1| Split_Month==m2|Split_Month==m3)& Split_Year==year))
+    if(complains!=0){
+      no_of_quarter <- no_of_quarter + 1
+      df <- rbind(df, data.frame(year,quarter,no_of_quarter, complains))
+    }
+  }
+}
+
+#df
+```
+```{r echo=FALSE}
+df$complains<- df$n
+df$n <- NULL
+#df<- df %>%  filter(year!=2012 | quarter !=1)
+#df
+```
+
+## 1. Problem statement and data used: 
+
+We are considering the data of `Bank of America` to estimate the potential complains for year 2022. Here we are considering `r length(unique(dataset$Product))` products i.e. `r  unique(dataset$Product)` and all `r length(unique(dataset$Sub.product))` sub-products. The data is available from year `r min(dataset$Split_Year)` to year `r max(dataset$Split_Year)` upto current(3) month. 
+
+## 2. Planning: 
+
+Year & Month  wise breakdown of complains is provided in [Appx-2,3]. Please note that complains for 2021 will be very less as compared to previous because we have data only for 3 months. So for the sake of analysis we are considering complains per quarter, starting from 2$^{nd}$ quarter of year 2012 to 1$^{st}$ quarter of year 2021. Since at least 20 cases per independent variable in the analysis are required and we are considering only 1 predictor variable, our sample size (`r count(df)`) is sufficient.
+
+**Assumption check**
+
+* **The relationship between the IVs and the DV is linear:**  The predictor variable (`quarter`) is quantitative and the outcome (`no of complains`) is quantitative, continuous and additive [Appx-4] we can consider it to be unbounded. Also, since linear regression is sensitive to outliers, (fig-1) shows that we have no outlier.
+
+* **Non zero variance:** The data varies and same can be visualized with the help of scatter plot (fig-2).
+
+```{r echo=FALSE}
+f <- ggplot(df, aes(y=complains))
+f + geom_boxplot() +ggtitle("Fig 1-Checking outliers")+theme_bw() 
+```
+```{r echo=FALSE}
+scatter <- ggplot(df, aes(no_of_quarter, complains))
+scatter + geom_point() + 
+ # geom_smooth(method = "lm", colour = "Blue")+ 
+labs(x = "no_of_quarter", y = "No of complains")+ggtitle("Fig 2-Non zero variance")+theme_bw()
+
+```
+
+* **No or little multicollinearity:**  Here we are considering single predictor so we need not to check multicollinearity.Remaining assumptions can be checked after linear regression.
+
+
+## 3. Analysis:
+We are trying to predict the no of potential cases for year 2022 depending on the complains in past so let us build the regression model [Appx-5]: 
+$\texttt{complains}_i = \beta_0 + \beta_{\texttt{quarter}} \texttt{quarter}_i + \epsilon_i$
+
+```{r echo=FALSE}
+regressor = lm(formula = complains ~ no_of_quarter,   data = df)
+#summary(regressor)
+```
+
+* **Model assessment:**           $\texttt{complains}_i = 568.96 + 9.67 * \texttt{quarter}_i + \epsilon_i$
+
+* **Coefficients significance:** 
+Both the intercept and `no_of_quarter` coefficient are significantly different than zero ($p<2\times 10^{-16}$).A statistically significant coefficient indicates that there is an association between the predictor (x) and the outcome (y) variable.This can also be confirmed by looking at the confidence interval of the coefficients [Appx-6]. The adjusted $R^2$ value in the above model is `r round(summary(regressor)$adj.r.squared, digits=4)`,which explains `r round(summary(regressor)$adj.r.squared*100, digits=2)`\%  of the variance by the model.
+A large F-statistic will corresponds to a statistically significant p-value (p < 0.05). In our example, the F-statistic equal 45.42 producing a p-value of 9.589e-08, which is highly significant.
+
+```{r echo=FALSE}
+#sigma(regressor)*100/mean(df$complains)
+```
+
+**Assumption check:** 
+
+* **Normality:** From QQ plot (graph-2) we can see that data under analysis is almost aligned diagonally with some minor deviation or histogram [appx-12] follows bell shape so the assumption of normality is met.
+
+* **Linearity:** From Residual vs Fitted(graph-1),the residuals are distributed equally about the zero and also the black line is approximately horizontal at zero. Thus we can say that linearity assumption is followed. 
+
+* **Homoscedasticity:** From Scale-Location(graph-3), as we can see most of the residuals are spread equally along the range of predictor. Also the line is quite horizontal which shows that the homoscedasticity is followed.
+Our plot of standardized residuals vs standardized predicted values[Appx-14] showed no obvious
+signs of funneling, suggesting the assumption of homoscedasticity has been met.
+
+* **Auto-correlation:**Using Durbin Watson test[Appx-17] value of d is 1.14,p=0.006  which is not(1.5 < d < 2.5) show that there is auto-correlation in the data and hence residuals are not independent from each other. In order to handle this violation the bootstrapping can be done[Appx-18].
+
+* **Influential cases:**Residuals vs Leverage(graph-4) about outliers and influential points.In this plot, the large values marked by cook’s distance(26,36,38) might require further investigation (Such influential points tends to have a sizable impact of the regression line). 
+
+```{r echo=FALSE}
+library(ggiraphExtra)
+ggPredict(regressor, se=TRUE)+ggtitle("Fig-4:Complains trend")+theme_bw()
+
+```
+```{r echo=FALSE}
+library(ggfortify)
+autoplot(regressor)+theme_bw()
+```
+
+* **Model accuracy:** Residual standard error (RSE):In our example, RSE = 89.41, meaning that the observed no of complains from the true regression line by approximately 89.41 units in average.However, we can calculate the percentage error[Appx-7], which is `r round(sigma(regressor)*100/mean(df$complains), digits=2)`\%  (quite low).
+
+* **Predicting number of cases for year 2022:** From the equation of linear regression we can predict the future (quarter-wise) values as given in table below[Appx-15]:
+
+```{r echo=FALSE}
+init<-max(df$no_of_quarter)
+newValues=tibble(no_of_quarter=c(init+1,init+2,init+3,init+4,init+5,init+6,init+7))
+future_prediction<- predict.lm(regressor, newValues)
+#future_prediction
+title<-c('Q2-2021','Q3-2021','Q4-2021','Q1-2022','Q2-2022','Q3-2022','Q4-2022')
+rbind(title,round(future_prediction, digits=2))
+```
+```{r echo=FALSE}
+#future_prediction[4:7]
+#sum(479.1088 ,472.8990, 466.6892 ,460.4795 ,454.2697 ,448.0599 ,441.8502, 435.6404, 429.4307, 423.2209, 417.0111, 410.8014 )
+```
+
+```{r echo=FALSE}
+val_2022 <- sum(future_prediction[4:7])
+#val_2022
+```
+```{r echo=FALSE}
+
+```
+
+## 4. Conclusion:
+From table given above and quarter-wise analysis of no of complains(fig-4) we can expect to receive `r round(val_2022)` complains in year 2022(with approx less or more 89 complains per quarter than as given in table). However, since some pre-requisite(Assumptions) are not met, we can better predict no of complains using other options like accounting for other factors (Multiple linear regression) or considering more instances (bootstrapping).
+

@@ -1,0 +1,233 @@
+---
+title: "TB burden- Partial correlation Report"
+output: word_document
+---
+
+```{r setup, include=FALSE,  echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+```
+## Data
+```{r echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(skimr)
+library(dplyr)
+library(ggplot2)
+library(pastecs)
+library(psych) 
+library(grid)
+library(gridExtra)
+library(GGally)
+burdenData = read.csv("TB_burden_countries_2021-03-02.csv", header = TRUE)
+
+df <- as_tibble(burdenData)
+new_df<- df%>%select("e_mort_num","c_cdr_lo","e_inc_tbhiv_num_hi" ) 
+
+new_df<-mutate(new_df, mortality = log(e_mort_num+1),
+              treatement_coverage = log(c_cdr_lo+1),
+              cases_tbhiv=log(e_inc_tbhiv_num_hi+1)
+               )
+
+x <- na.omit(new_df)
+
+
+number_of_observations <- count(x)
+number_of_variables<- length(df)
+number_of_countries<- length(unique(burdenData$country))
+```
+In the burden data set we have `r number_of_observations` observations about mortality due to all forms, estimated cases having both TB and HIV disease and the TB treatment coverage provided across `r number_of_countries` countries. Since all these interval variables were significantly skewed, and contains some outliers ,we have performed log transformation for achieving normal distribution. We have removed records having null values.[Appx-1,2,3]
+
+```{r echo=FALSE}
+
+data<-x %>% select("mortality","treatement_coverage","cases_tbhiv")
+
+```
+
+
+```{r echo=FALSE}
+mortality<- data$mortality
+cases<- data$cases_tbhiv
+treatment_coverage<-data$treatement_coverage
+
+c1<-cor.test(mortality, treatment_coverage)
+c2<-cor.test(mortality, cases)
+c3<-cor.test(cases, treatment_coverage)
+
+```
+
+Analysis of the TB treatment coverage data [Appx-4,5,6] showed that mortality(due to all forms) was negatively related to TB treatment coverage, but positively related to no. of cases having both HIV and TB, and (TB+HIV)cases itself was negatively related to TB treatment coverage.Now, we know that mortality is related to both TB+HIV cases and TB treatment coverage, then to analyze exact relationship between mortality and TB treatment coverage need to take account of the effect of no of cases having both TB and HIV. 
+
+
+```{r echo=FALSE}
+r2 <- cbind.data.frame(cor(data)^2 * 100)
+signif(r2, digits = 4)
+```
+
+Using the values of R2 for these relationships [Appx-7], we know that TB treatment coverage accounts for 42.90% of the variance in morality, that no of cases accounts for 83.08% of the variance in morality, 
+and that no of cases accounts for 33.82% of the variance in TB treatment coverage. If no of cases accounts for 33.82%  the variance in TB treatment coverage, then it seems feasible that at least some of the 42.90% of variance in mortality that is accounted for by TB treatment coverage is the same variance that is accounted for by no of cases. 
+
+
+## Planning (Assumptions): 
+
+**1:** You have one (outcome) variable mortality and (predictor) variable TB treatment coverage and these are both interval.                                                                   
+**2:** You have one control variable no of cases having both TB & HIV and is also interval data.         
+**3:** There is a linear relationship between all three variables.(visualized with help of scatterplot [Appx-8,9,10])                                                                                       **4:** Since partial correlation is sensitive to outliers, we have already taken logarithmic transformation of data.                                                                         
+**5:** Variables should be approximately normally distributed. This is tested with Shapiro test for normality.From table we can see that all the variables are not normal (p<0.05), however, due to large sample size i.e. `r count(data)` we can assume normal distribution.
+
+
+
+```{r echo=FALSE}
+mortality<-data$mortality
+coverage<-data$treatement_coverage
+cases<-data$cases_tbhiv
+s1<- shapiro.test(mortality)
+s2<-shapiro.test(coverage)
+s3<-shapiro.test(cases)
+```
+
+
+
+
+```{r echo=FALSE}
+out<-rbind.data.frame(c('Data','Statistic','p value'))
+out<-rbind.data.frame(out,c(s1$data.name,signif(s1$statistic, digits = 2),signif(s1$p.value, digits = 2)))
+out<-rbind.data.frame(out,c(s2$data.name,signif(s2$statistic, digits = 2),signif(s2$p.value, digits = 2)))
+out<-rbind.data.frame(out,c(s3$data.name,signif(s3$statistic, digits = 2),signif(s3$p.value, digits = 2)))
+
+out
+
+
+```
+
+## Analysis:
+
+```{r echo=FALSE}
+mortality<- data$mortality
+cases<- data$cases_tbhiv
+treatment_coverage<-data$treatement_coverage
+
+c1<-cor.test(mortality, treatment_coverage)
+c2<-cor.test(mortality, cases)
+c3<-cor.test(cases, treatment_coverage)
+
+```
+```{r echo=FALSE}
+#c1$estimate
+```
+
+```{r echo=FALSE}
+#cor(data)^2 * 100
+```
+```{r echo=FALSE}
+library(ggm)
+
+
+pc<-pcor(c("mortality", "treatement_coverage", "cases_tbhiv"), var(data))
+
+
+```
+
+
+```{r echo=FALSE}
+#pc
+```
+
+
+```{r echo=FALSE}
+#pc^2
+```
+
+
+```{r echo=FALSE}
+
+ptest<-pcor.test(pc, 1, 3591)
+
+
+```
+
+Table shows output for the partial correlation of TB treatment coverage and mortality controlling for number of cases having TB & HIV. .[Appx-11,12,13]
+```{r echo=FALSE}
+
+final<-rbind.data.frame(c('pc','pc^2','t value','df','pvalue'))
+final<-rbind.data.frame(final,c(signif(pc, digits = 2),signif(pc^2, digits = 2), signif(ptest$tval,digits = 4),signif(ptest$df,digits = 4),signif(ptest$pvalue,digits = 2)))
+
+final
+```
+
+                                                                   
+**1.**  The partial correlation between mortality and TB treatment coverage is `r signif(pc, digits = 2)` which is very less than the correlation when the effect of no of cases having TB+HIV is not controlled for `r signif(c1$estimate, digits = 2)` (p-value < 2.2e-16).
+**2.** The correlation coefficient is nearly half what it was before. While this correlation is still statistically significant (its p-value is `r signif(ptest$pvalue,digits = 2)`, which is very smaller than .05). 
+**3.** The value of R2 for the partial correlation is `r signif(pc^2, digits = 2)`, which means that TB treatment coverage can now account for only `r signif(pc^2*100, digits = 2)`% of the variance in mortality. 
+**4.** When the effects of number of cases were not controlled for, TB treatment coverage shared 42.90% of the variation in mortality and so the inclusion of number of cases has severely diminished the amount of variation in Mortality shared by TB treatment coverage. 
+
+As such, a truer measure of the role of TB treatment coverage has been obtained. Running this analysis has shown us that TB treatment coverage alone does explain some of the variation in Mortality, but there is a complex relationship between TB treatment coverage, no of cases with TB+HIV and mortality that might otherwise have been ignored. Although causality is still not certain, because relevant variables are being included, the third variable problem is, at least, being addressed in some form.
+
+
+
+```{r echo=FALSE}
+#ggpairs(data, axisLabels = "none", switch = "both")
+```
+
+```{r echo=FALSE}
+
+library(ggplot2)
+m<-ggplot(data, aes(x=cases_tbhiv, y=mortality)) +
+  geom_point(color="#69b3a2") +
+  labs(x="Cases(tb+HIV)", y = "Mortality")+
+  scale_size_manual(values=c(15))+
+  theme_classic()
+plot1<-m +  geom_smooth(method=lm)+ggtitle("Correlation - Mortality & (TB+HIV) cases")+theme_bw()
+
+
+plot1
+```
+
+
+```{r echo=FALSE}
+
+library(ggplot2)
+m<-ggplot(data, aes(x=treatment_coverage, y=mortality)) +
+  geom_point(color="#69b3a2") +
+  labs(x="TB treatment coverage", y = "Mortality")+
+  scale_size_manual(values=c(15))+
+  theme_classic()
+plot2<- m +  geom_smooth(method=lm)+ggtitle("Correlation - Mortality & TB Treatment coverage")+theme_bw()
+
+plot2
+
+```
+
+
+
+```{r echo=FALSE}
+
+
+
+Y_resid<-resid(lm(treatement_coverage~cases_tbhiv,data))
+X_resid<-resid(lm(mortality~cases_tbhiv,data))
+
+#Partial Correlation Between Mortality and TB treatment coverage Controlling for cases having both tb and HIV
+
+library(ggplot2)
+m<-ggplot(data, aes(x=X_resid, y=Y_resid)) +
+  geom_point(color="#69b3a2") +
+  labs(x="Residuals (Mortality| TB+HIV cases)", y = "Residuals (Treatment coverage |TB+HIV cases)")+
+  scale_size_manual(values=c(15))+
+  theme_classic()
+plot3<- m +  geom_smooth(method=lm)+ggtitle("Partial Correlation Between Mortality and Treatment\n coverage Controlling for cases having TB & HIV")+theme_bw()
+
+plot3
+
+```
+```{r echo=FALSE}
+library(grid)
+library(gridExtra)
+#grid.arrange(plot1, plot2,plot3,nrow = 3)
+```
+
+
+## Conclusion:
+“A partial correlation coefficient was computed to assess the relationship between the mortality(all forms) and treatment coverage by controlling the no. of cases having both HIV & TB. 
+ The partial correlation between mortality and TB treatment coverage is `r signif(pc, digits = 2)` which is very less than the bi-variate correlation when the effect of no of cases having TB+HIV is not controlled for `r signif(c1$estimate, digits = 2)` (p-value < 2.2e-16). A lower partial r than bi-variate r means that much of the correlation was accounted for in the no of cases having TB & HIV. Once we REMOVED the correlation between mortality and no of cases, treatment coverage was no longer strongly correlated with mortality. That is because mortality and no of cases are so strongly correlated.A scatterplot summarizes the results  Overall."

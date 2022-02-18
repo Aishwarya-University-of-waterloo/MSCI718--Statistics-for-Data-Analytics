@@ -1,0 +1,171 @@
+---
+title: "Assignment2- Partial Correlation -Apendix"
+author: "Aishwarya (Student ID: 20909044)"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Data source:
+<https://extranet.who.int/tme/generateCSV.asp?ds=estimates>
+
+
+## Resources:
+Library : <https://cran.r-project.org/web/packages/ppcor/>
+
+Reference: Discovering statistics Using r-Andy Field (Chapter 5 & 6)
+
+Reference: <https://statistics.laerd.com/spss-tutorials/partial-correlation-using-spss-statistics.php>
+
+## Appendix-1
+
+```{r echo=TRUE}
+library(skimr)
+library(dplyr)
+library(ggplot2)
+library(pastecs)
+library(psych) 
+library(grid)
+library(gridExtra)
+library(GGally)
+burdenData = read.csv("TB_burden_countries_2021-03-02.csv", header = TRUE)
+
+df <- as_tibble(burdenData)
+new_df<- df%>%select("e_mort_num","c_cdr_lo","e_inc_tbhiv_num_hi" ) 
+
+new_df<-mutate(new_df, mortality = log(e_mort_num+1),
+              treatement_coverage = log(c_cdr_lo+1),
+              cases_tbhiv=log(e_inc_tbhiv_num_hi+1)
+               )
+x <- na.omit(new_df)
+```
+
+
+
+## Appendix-2
+
+```{r echo=TRUE}
+number_of_observations <- count(x)
+number_of_variables<- length(df)
+number_of_countries<- length(unique(burdenData$country))
+
+
+data<-x %>% select("mortality","treatement_coverage","cases_tbhiv")
+
+
+```
+
+## Appendix-3
+
+```{r echo=TRUE}
+mortality<- data$mortality
+cases<- data$cases_tbhiv
+treatment_coverage<-data$treatement_coverage
+
+```
+
+## Appendix-4
+
+```{r echo=FALSE}
+
+c1<-cor.test(mortality, treatment_coverage)
+c1
+
+```
+
+## Appendix-5
+
+```{r echo=FALSE}
+c2<-cor.test(mortality, cases)
+c2
+```
+
+## Appendix-6
+
+```{r echo=FALSE}
+c3<-cor.test(cases, treatment_coverage)
+c3
+```
+
+## Appendix-7
+
+```{r echo=FALSE}
+
+cor(data)^2 * 100
+
+```
+
+
+
+## Appendix-8
+
+```{r echo=FALSE}
+e <- ggplot(data, aes(mortality, treatment_coverage))
+e+ geom_point(color="#69b3a2")+  geom_smooth(method=lm)
+```
+
+
+
+
+## Appendix-9
+
+```{r echo=FALSE}
+e <- ggplot(data, aes(mortality, cases))
+e+ geom_point(color="#69b3a2")+  geom_smooth(method=lm)
+```
+
+
+
+## Appendix-10
+
+```{r echo=FALSE}
+e <- ggplot(data, aes(cases,treatment_coverage))
+e+ geom_point(color="#69b3a2")+  geom_smooth(method=lm)
+```
+
+## Appendix-11
+
+```{r echo=FALSE}
+library(ggm)
+
+
+pc<-pcor(c("mortality", "treatement_coverage", "cases_tbhiv"), var(data))
+
+
+```
+
+
+```{r echo=FALSE}
+pc
+```
+
+## Appendix-12
+
+```{r echo=FALSE}
+pc^2
+```
+
+## Appendix-13
+
+```{r echo=FALSE}
+
+ptest<-pcor.test(pc, 1, 3591)
+
+ptest
+```
+
+
+## Appendix-14
+
+```{r  echo=FALSE}
+ggpairs(data, axisLabels = "none", switch = "both")
+```
+
+## Appendix-18
+
+<http://www.sthda.com/english/wiki/scatter-plots-r-base-graphs>
+
+

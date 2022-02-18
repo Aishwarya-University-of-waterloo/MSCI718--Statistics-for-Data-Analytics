@@ -1,0 +1,244 @@
+---
+title: "TB Population correlation Report"
+output: word_document
+---
+
+```{r setup, include=FALSE,  echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+```
+## Data
+```{r echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(skimr)
+library(dplyr)
+library(ggplot2)
+library(pastecs)
+library(psych) 
+library(grid)
+library(gridExtra)
+
+burdenData = read.csv("C:\\Users\\AISHWARYA\\OneDrive - University of Waterloo\\MSCI 718\\Individual Assignment1\\TB_burden_countries_2021-03-02.csv", header = TRUE)
+
+df <- as_tibble(burdenData)
+
+number_of_observations <- count(df)
+number_of_variables<- length(df)
+number_of_countries<- length(unique(burdenData$country))
+```
+In `burden` data set we have `r number_of_observations` records about `r number_of_countries` countries, it consist of `r number_of_variables` variables as[appx-1]. The data is divided across different categories like hiv, tb which are contributing factors in both mortality and cases. Along with this case detection ratios are provided. There are some outliers associated with each column mainly because of denser distribution of population in few regions and the spread of diseases in few regions. Looking at distribution of population and no of cases:
+
+```{r echo=FALSE}
+summ_e_pop_num<-summary(df$e_pop_num)
+summ_e_inc_num_lo<-summary(df$e_inc_num_lo)
+```
+
+```{r echo=FALSE}
+missing_data<- df %>%
+  select(e_pop_num,e_inc_num_lo) %>% 
+  summarise_all(~ sum(is.na(.)))
+#missing_data
+```
+```{r echo=FALSE}
+population<-"e_pop_num"
+  cases<-"e_inc_num_lo"
+property<-describe(df[,c(population, cases)],skew = FALSE)
+property[,c('mean','sd','min','max','range')]
+```
+
+```{r echo=FALSE}
+#describe(df[,c("e_pop_num", "e_inc_num_lo")])
+data1<-stat.desc(df["e_pop_num"], basic = TRUE)
+data2<-stat.desc(df["e_inc_num_lo"], basic = TRUE)
+#property<-cbind(c(data1,data2))
+```
+
+In these results, the mean population is a lot larger than the median is. The data appear to be skewed to the right[appx-2], which explains why the mean is greater than the median.(similar is applicable for no of cases)
+
+Here we are selecting population and no of cases for correlation testing because both the variables are monotonically increasing with respect to year,(i.e. a linear relationship) along with that since these variables are significantly skewed, both of them are transformed using log transformation in order to achieve normality required for parametric correlation test. Which can be crossverified using different normality tests. 
+
+```{r echo=FALSE}
+# count(df)
+df<-df %>% filter(e_inc_num_lo!=0)
+
+```
+```{r echo=FALSE}
+#count(df)
+```
+
+
+```{r echo=FALSE}
+df<-mutate(df, log_e_pop_num = log(e_pop_num),log_e_inc_num_lo=log(e_inc_num_lo) )
+```
+
+
+```{r echo=FALSE}
+# outleiers
+out1<- df %>% 
+  ggplot(aes(x=seq(e_pop_num), y=e_pop_num)) + geom_point()+ggtitle("Population before transformation")+theme_bw()
+
+log_out1<- df %>% 
+  ggplot(aes(x=seq(log_e_pop_num), y=log_e_pop_num)) + geom_point()+ggtitle("Population after transformation")+theme_bw()
+```
+
+```{r echo=FALSE}
+# outleiers
+out2 <- df %>% 
+  ggplot(aes(x=seq(e_inc_num_lo), y=e_inc_num_lo)) + geom_point()+ggtitle("Cases before transformation")+theme_bw()
+
+log_out2 <- df %>% 
+  ggplot(aes(x=seq(log_e_inc_num_lo), y=log_e_inc_num_lo)) + geom_point()+ggtitle("Cases after transformation")+theme_bw()
+```
+
+```{r echo=FALSE}
+library(grid)
+library(gridExtra)
+#grid.arrange(out1, out2, log_out1, log_out2,nrow = 2, ncol=2,top = textGrob("Fig 1- Outliers",gp=gpar(fontsize=14,font=3)))
+
+```
+
+## Planning 
+#### Checking assumption: Normal distribution
+**A) Visual inspection**:
+Both the boxplots are not showing ideal normal distribution; the median is slightly close to the upper quartile of the box and the whiskers are slightly unequal. Population has outliers (due to few countries having dense population). Along with box plot QQ plot is showing some linearity in middle of the graph however actual and expected values are not same for higher and lower values for both variables. So, only visual inspection is not sufficient, we shall evaluate skewness coefficients.
+
+```{r echo=FALSE}
+h1 <- ggplot(df, aes(log_e_pop_num)) + 
+  theme(legend.position = "none") + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + 
+  #labs(x ="log_e_pop_num", y = "Density") + 
+  stat_function(fun = dnorm, args =
+list(mean = mean(df$log_e_pop_num, na.rm = TRUE), sd = sd(df$log_e_pop_num, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("Population")+
+  #theme_bw()
+  
+   theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+
+h2 <- ggplot(df, aes(log_e_inc_num_lo)) + 
+  theme(legend.position = "none") + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + 
+  #labs(x ="log_e_pop_num", y = "Density") + 
+  stat_function(fun = dnorm, args =
+list(mean = mean(df$log_e_inc_num_lo, na.rm = TRUE), sd = sd(df$log_e_inc_num_lo, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("No of Cases")+theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+
+
+```
+
+
+
+```{r echo=FALSE}
+ qq1<- df %>%  ggplot(aes(sample=log_e_pop_num)) + 
+  stat_qq() + 
+  geom_qq_line(color="red") + 
+  theme(legend.position = "none")+
+  ggtitle("Population")+
+   theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+
+ qq2<- df %>%  ggplot(aes(sample=log_e_inc_num_lo)) + 
+   stat_qq() + geom_qq_line(color="red") + 
+   theme(legend.position = "none")+
+   ggtitle("No. of cases")+
+    theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+
+```
+
+
+```{r echo=FALSE}
+b1 <- ggplot(df, aes(y=log_e_pop_num))+ stat_boxplot()+ theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+b2 <- ggplot(df, aes(y=log_e_inc_num_lo))+ stat_boxplot()+ theme(
+plot.title = element_text(color="black", size=10, face="bold.italic"),
+
+)
+grid.arrange( h1, qq1, b1,h2,qq2,b2,nrow = 2, ncol=3,top = textGrob("Fig 1- Visual inspection for normality",gp=gpar(fontsize=10,font=3)))
+
+```
+
+
+**B) Quantifying normality with numbers**:
+**1. Measuring skewness**
+
+```{r echo=FALSE}
+#describe(df[,c("log_e_pop_num", "log_e_inc_num_lo")])
+```
+
+```{r echo=FALSE}
+
+data<-stat.desc(df[, c("log_e_pop_num", "log_e_inc_num_lo")], basic = FALSE, norm = TRUE)
+
+```
+```{r echo=FALSE}
+
+#data
+
+```
+
+
+```{r echo=FALSE}
+measures<-cbind(data['skew.2SE',])
+measures[c(1,2)]
+```
+
+Because skewness of Population(after transformation) `r data['skew.2SE',1]` and skewness of no of Cases (after transformation) `r data['skew.2SE',2]` is not between - 3.29 and  3.29 [ref-1], we can conclude that the skewness for both is different from 0 (at p < .001.). 
+
+**2. Shapiro–Wilk test**:
+Since we have observations<5000, we can perform Shapiro–Wilk test to test normality.
+```{r echo=FALSE}
+population<-df$log_e_pop_num
+cases<-df$log_e_inc_num_lo
+t_new<-rbind(shapiro.test(population),shapiro.test(cases))
+```
+```{r echo=FALSE}
+t_new[,c('method','data.name','statistic','p.value')]
+```
+
+Shapiro–Wilk test for both features is p (very much) less than 0.05 (and, therefore, significant), and the numeracy scores (w), for Population is W=0.96 and Cases W=0.97, data is significantly non-normal.
+
+## Analysis:
+
+**correlation test**:
+Since both the variable under consideration are not normally distributed, we cannot perform parametric test. However, we can calculate **Spearman’s rho** since we have interval data (monotonically related), there is no assumption of normality (as it is a nonparametric statistic).
+For correlation test let's assume the null hypothesis as there is zero correlation between population and cases and hence alternative hypothesis is there is non-zero correlation in these 2 variables.
+```{r echo=FALSE}
+population<- df$e_pop_num
+cases<- df$e_inc_num_lo
+cor.test(population, cases, method ="spearman")
+```
+It reiterates that the correlation between Population and number of Cases was 0.86, but tells us that this is significantly different from zero, p < 2.2e-16 is very close to zero. A typical threshold is 0.05, anything smaller counts as statistically significant.
+Most important, In all likelihood, Population and number of Cases are, in reality, positively related. Hence we reject null hypothesis and accept alternative hypothesis. This positive correlation between Population and no. of Cases can be visualized from fig 3
+```{r echo=FALSE}
+library("ggpubr")
+ggscatter(df, x = "log_e_pop_num", y = "log_e_inc_num_lo", 
+          add = "reg.line", conf.int = TRUE, size=1.5, color="#69b3a2",
+          cor.coef = TRUE, cor.method = "spearman",
+          xlab = "Population", ylab = "Cases")
+
+```
+
+```{r echo=FALSE}
+p3 <- ggplot(df, aes(x=log_e_pop_num, y=log_e_inc_num_lo)) +
+  geom_point(color="#69b3a2",fill = "black", size = 2) +
+  geom_smooth(method=lm , color="red", fill="black", se=TRUE) #+  theme_ipsum()
+
+#p3
+```
+
+## Conclusion:
+*“A Spearman’s correlation coefficient was computed to assess the relationship between the total population of the country and number of cases across country. There was a positive correlation between the two variables,  rho = .86 (p-value < 2.2e-16). A scatterplot summarizes the results (Figure 3). Overall, there was a strong, positive correlation between total population and number of cases. Increases in total population were correlated with increases in number of cases.”*

@@ -1,0 +1,123 @@
+---
+title: "ChickenWeight Assignment-Appendix"
+author: "Aishwarya (Student ID: 20909044)"
+date: "2/1/2021"
+output: word_document
+---
+
+## Group contribution:
+Working alone for pair assignment-1. I have referred few blog and post from stackoverflow and links are mentioned in corresponding sections.For confidence interval calculation "DISCOVERING STATISTICS USING R by Andy Field"(section 2.5.2) book is referred.
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+
+```
+
+## Appendix-1
+```{r echo=TRUE}
+
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(skimr)
+library(gridExtra)
+#ChickWeight
+
+df <- as_tibble(ChickWeight)
+number_of_observations <- count(df)
+number_of_chickens <- length(unique(df$Chick))
+number_of_diet<-length(unique(df$Diet))
+number_of_days <- max(df$Time)-min(df$Time)
+number_of_variables<- length(df)
+```
+
+
+## Appendix-2
+
+```{r}
+summary(ChickWeight)
+sd(ChickWeight$weight)
+
+```
+
+## Appendix-3
+
+```{r echo=TRUE}
+ggplot( aes(x = Time), data = df) + 
+  geom_histogram(color = 'black', fill = 'light blue') + 
+  geom_vline(aes(xintercept=median(Time),
+                 color="median"), linetype="dashed",
+             size=1) +
+  geom_vline(aes(xintercept=mean(Time),
+                 color="mean"), linetype="dashed",
+             size=1) +
+  scale_color_manual(name = "statistics", values = c(median = "blue", mean = "red"))+ ggtitle("Discrete Time Distribution")+theme_bw()
+
+
+
+```
+
+
+## Appendix-4
+
+```{r echo=TRUE}
+df_diet_1<-df %>% filter(Diet==1)
+
+df_diet_2 <- df %>% filter(Diet==2)
+df_diet_3 <- df %>% filter(Diet==3)
+df_diet_4 <- df %>% filter(Diet==4)
+
+
+#par(mfrow=c(2,2))
+#plot(  ggplot(data=df_diet_1, aes(x=weight))+ geom_histogram(fill ='pink',color='black'))
+#plot(  ggplot(data=df_diet_2, aes(x=weight))+ geom_histogram(fill ='light blue',color='black'))
+#(data=df_diet_3, aes(x=weight))+ geom_histogram(fill ='light green',color='black')
+#ggplot(data=df_diet_4, aes(x=weight))+ geom_histogram(fill ='yellow',color='black')
+
+
+
+
+diet_1 <-ggplot(data=df_diet_1, aes(x=weight))+ geom_histogram(fill ='pink',color='black')+ggtitle("Wt. distribution of Diet 1")+theme_bw()
+diet_2 <-ggplot(data=df_diet_2, aes(x=weight))+ geom_histogram(fill ='light blue',color='black')+ggtitle("Wt. distribution of Diet 2")+theme_bw()
+diet_3 <-ggplot(data=df_diet_3, aes(x=weight))+ geom_histogram(fill ='light green',color='black')+ggtitle("Wt. distribution of Diet 3")+theme_bw()
+diet_4 <-ggplot(data=df_diet_4, aes(x=weight))+ geom_histogram(fill ='yellow',color='black')+ggtitle("Wt. distribution of Diet 4")+theme_bw()
+
+grid.arrange(diet_1,diet_2,diet_3,diet_4,ncol=2,nrow=2)
+```
+
+
+
+## Appendix-5
+Note: the degree of freedom for t score = no of samples-1 so we have used qt function for calculation of the same. It accepts the confidence level and degree of freedom as argument and provides corresponding t value. The detailed description for the same is available on: https://stats.stackexchange.com/questions/21596/how-can-i-calculate-a-critical-t-value-using-r
+
+```{r echo=TRUE}
+day_0 <-  ChickWeight %>% filter(Time==0) %>%group_by(Diet)
+day_20 <- ChickWeight %>% filter(Time==20) %>%group_by(Diet)
+
+samples<-function(x) (length(x))
+
+
+C_I_1 <- function(x) (mean(x)-(1.96*sqrt(var(x)/length(x))))
+C_I_2 <- function(x) (mean(x)+(1.96*sqrt(var(x)/length(x))))
+
+confidence_interval_day_0<- day_0%>%  summarize(mean=mean(weight), sd=sd(weight),n=samples(weight),C1=C_I_1(weight),C2=C_I_2(weight))
+
+confidence_interval_day_20<- day_20%>%  summarize(mean=mean(weight), sd=sd(weight),n=samples(weight),C1=C_I_1(weight),C2=C_I_2(weight))
+
+
+```
+## Appendix-6
+
+```{r}
+
+confidence_interval_day_0
+
+```
+## Appendix-7
+
+```{r}
+
+confidence_interval_day_20
+```

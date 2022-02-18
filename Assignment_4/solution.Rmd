@@ -1,0 +1,107 @@
+---
+title: "Individual Assignment4- solution"
+output: word_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr);
+library(tidyr);
+library(ggplot2);
+library(boot); 
+library(car); 
+library(QuantPsyc);
+library(ggfortify);
+#dataset <- read.csv('C:\\Users\\SALONI\\OneDrive - University of Waterloo\\MSCI 718\\I4\\melb_data.csv')
+dataset <- read.csv('melb_data.csv')
+
+
+
+```
+
+```{r echo=FALSE}
+
+col1 <- ggplot(dataset, aes(Propertycount ,Type))
+
+
+col2 <- ggplot(dataset, aes(Price ,Type))
+dataset <- dataset %>%  filter (Suburb=='Reservoir'|Suburb=='Richmond'| Suburb=='Preston'|Suburb=='Brunswick'|Suburb=='Bentleigh East')
+
+dataset<-na.omit(dataset)
+
+dataset$Type[dataset$Type=='h']<-'House'
+dataset$Type[dataset$Type=='t']<-'NonHouse'
+dataset$Type[dataset$Type=='u']<-'NonHouse'
+
+dataset$Price<- log(dataset$Price)
+
+dataset$Postcode<- log(dataset$Postcode)
+dataset$Rooms <- log(dataset$Rooms)
+dataset$Bathroom <- log(dataset$Bathroom)
+dataset$Distance <- log(dataset$Distance+1)
+dataset$BuildingArea <- log(dataset$BuildingArea)
+
+```
+## Problem statement:
+From basic exploratory analysis of `Melbourne housing dataset`,I observed that properties of type "house" are more in number as compare to other types and prices for house are more than that of unit and town-houses."Does type of house in an area plays an important role in determining the price if all other things(like number of rooms,bathroom, locality, area, etc. ) are the same ?" To answer this question we can propose null hypothesis as type of house has no influence over price and alternative hypothesis as the type is statistically significant while deciding the price. For the sake of analysis we are considering housing data of `r count(dataset)` samples(which is enough sample size for 6 predictors), across `r length(unique(dataset$Suburb))` popular sub-urban areas (`r unique(dataset$Suburb)`) and  considering the housing types to be `r unique(dataset$Type)`.
+```{r}
+
+col1 + geom_col() 
+
+col2 + geom_col() 
+```
+
+
+
+## Planning:
+Initially 2 models were created, both of them accounting for basic features like building area, location code, no of rooms & bathrooms and distance from CBC and later model considers one extra feature i.e. type of the house. After fitting the models and visual inspection for assumptions[appx- 5], both of the models were showing normal distribution of errors(residuals), however other assumptions like homoscedasticity and linearity were not met. In order to overcome this, log transformation for all numeric predictors and outcome variable is performed and then those models were fitted on the transformed data.
+
+### Assumptions:
+Assumptions can be accessed from graphs below(first graph represents model without house type and later with house type)
+1. Predictor variable are quantitative,categorical and outcome variable is continuous.
+2. Linearity: residuals are distributed equally about the zero and the blue line is approximately horizontal at zero. graph 1 (Residual vs Fitted)
+3. Normally distributed errors: From graph 2-QQ plot, residuals are almost following the straight line and hence assumption is met.
+4. Non-zero variance: From [Appx- 4b] Predictors are not having zero variance.  
+5. Homoscedasticity: Graph 3 (Scale-Location), as we can see most of the residuals are spread equally and line is quite horizontal,hence assumption is followed.
+6. Outliers /Influential points : few residuals are beyond ±2.5 standard deviation, however cook's distance for all of them is less than 1 [Appx-7]so we can conclude that none of them is influential.
+7. Multicollinerity:[Appx-8] VIF values are all well below 10 and the tolerance statistics all well above 0.2 and average VIF is close to 1.So, there is no collinearity within our data.
+```{r echo=FALSE}
+model.1<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance,data =dataset,na.action=na.exclude)
+#summary(model.1)
+```
+
+```{r echo=FALSE}
+model.2<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance+Type,   data = dataset,na.action=na.exclude)#Postcode
+#summary(model.2)
+```
+
+```{r echo=FALSE}
+plt.1<-autoplot(model.1, label.size = 0.5, title.size=0.5)
+plt.1
+```
+
+
+```{r echo=FALSE}
+plt.2<-autoplot(model.2,label.size = 0.5, colour = 'Type',legend="FALSE")
+plt.2
+```
+
+
+## Analysis
+
+
+By comparing both models[Appx-6], there is significant improvement in adjusted R2 value which indicates considering house type while determining price would yield more accurate results. Here coefficient corresponding to non-house type unit is negative which means that for same configuration, house will be more expensive as compare to (NH) unit or town-house. Almost all the variables are statistically significant p value much less than .05 (except bathroom for model 1).
+By further comparison using ANOVA [Appx-10]. We got significant result(F(1, 651) = 167.2, p < 2.2e-16).So, at the 5% confidence interval from Analysis of Variance,we can reject the null hypothesis that the significance of type of house is equal to 0, and accept the alternative hypothesis. Thus, type of house plays important role in determining the price of the house when other parameters like area, location, no of rooms & bathrooms etc are same.
+This can be verified by predicting prices for house and non-house type property by keeping all other things same[Appx-11]
+
+
+
+
+
+```{r echo=FALSE}
+#confint(model.2) #319
+```
+
+
+## Conclusion:
+"From given data, We can conclude that type of property has significant impact on the price. For example,for a property of 3 room, 2 bathroom, 100sq meter area which is 12km away from CBD, we would be paying 606579$ for town house or unit, which will increase to 833424$ for house type."
+

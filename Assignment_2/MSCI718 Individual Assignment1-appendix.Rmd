@@ -1,0 +1,265 @@
+---
+title: "Assignment2- Correlation -Apendix"
+author: "Aishwarya (Student ID: 20909044)"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+## Data source:
+<https://extranet.who.int/tme/generateCSV.asp?ds=estimates>
+
+
+## Resources:
+<https://www.statstutor.ac.uk/resources/uploaded/spearmans.pdf>
+
+Discovering statistics Using r-Andy Field (Chapter 5 & 6)
+
+## Appendix-1
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+library(skimr)
+library(dplyr)
+library(ggplot2)
+library(pastecs)
+library(psych) 
+budgetData = read.csv("C:\\Users\\AISHWARYA\\OneDrive - University of Waterloo\\MSCI 718\\Individual Assignment1\\TB_burden_countries_2021-03-02.csv", header = TRUE)
+
+df <- as_tibble(budgetData)
+
+number_of_observations <- count(df)
+number_of_variables<- length(df)
+number_of_observations
+number_of_variables
+```
+
+
+
+## Appendix-2
+
+
+```{r echo=TRUE}
+summary(df$e_pop_num)
+#sd(df)
+```
+
+## Appendix-3
+```{r echo=TRUE}
+summary(df$e_inc_num_lo)
+```
+
+## Appendix-4
+In budget data set each column represents unique feature, each row represents unique observation and each cell has unique value so the data provided is already tidy.
+
+## Appendix-5
+
+```{r}
+
+missing_data<- df %>%
+  select(e_pop_num,e_inc_num_lo) %>% 
+  summarise_all(~ sum(is.na(.)))
+
+
+
+```
+This data has several missing values and we may consider the budget to have normal distribution but at the same time this budget depends on several other factors such as economy policies, geography and other medical conditions in vicinity, so due to these uncertainty we are not assuming anything to replace these values with any representative. ggplot will simply ignore missing values.
+
+
+
+
+## Appendix-6
+
+```{r echo=FALSE}
+
+hist.e_pop_num <- ggplot(df, aes(e_pop_num)) + theme(legend.position = "none") +geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+labs(x = "e_pop_num", y = "Density")+ggtitle("Population")+theme_bw()
+
+hist.e_inc_num_lo <- ggplot(df, aes(e_inc_num_lo)) + theme(legend.position = "none") +geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+labs(x = "e_inc_num_lo", y = "Density")+ggtitle("No of cases expected")+theme_bw()
+
+library(grid)
+library(gridExtra)
+grid.arrange(hist.e_pop_num, hist.e_inc_num_lo,nrow = 2)
+
+```
+
+
+
+
+## Appendix-7
+
+
+```{r echo=FALSE}
+
+bin1<-df %>% 
+  ggplot(aes(x=seq(e_pop_num), y=e_pop_num)) + geom_point()+ggtitle("Population ")+theme_bw()
+bin2<-df %>% 
+  ggplot(aes(x=seq(e_inc_num_lo), y=e_inc_num_lo)) + geom_point()+ggtitle("No of cases expected")+theme_bw()
+
+
+grid.arrange(bin1, bin2,nrow = 2)
+```
+
+
+## Appendix-8
+
+
+```{r echo=TRUE}
+e_pop_num_desc<-stat.desc(df$e_pop_num, basic=FALSE, norm=TRUE)
+e_inc_num_lo_desc<-stat.desc(df$e_inc_num_lo, basic=FALSE, norm=TRUE)
+e_pop_num_desc
+e_inc_num_lo_desc
+```
+
+
+## Appendix-9
+Considering log transformation on budget and log transformation on (no. of cases+1) for handling skewness.
+
+```{r echo=FALSE}
+df<-mutate(df, log_e_pop_num = log(e_pop_num),log_e_inc_num_lo=log(e_inc_num_lo+1) )
+
+
+# log transformation
+
+hist.log_e_pop_num <- ggplot(df, aes(log_e_pop_num)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + labs(x =
+"log_e_pop_num", y = "Density") + stat_function(fun = dnorm, args =
+list(mean = mean(df$log_e_pop_num, na.rm = TRUE), sd = sd(df$log_e_pop_num, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("Population after log transformation")+theme_bw()
+
+hist.log_e_inc_num_lo <- ggplot(df, aes(log_e_inc_num_lo)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + labs(x =
+"log_e_pop_num", y = "Density") + stat_function(fun = dnorm, args =
+list(mean = mean(df$log_e_inc_num_lo, na.rm = TRUE), sd = sd(df$log_e_inc_num_lo, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("No of cases after log transformation")+theme_bw()
+
+grid.arrange(hist.log_e_pop_num , hist.log_e_inc_num_lo,nrow = 2)
+```
+
+
+## Appendix-10
+
+```{r echo=FALSE}
+
+df<-mutate(df, rt_e_pop_num = sqrt(e_pop_num),rt_e_inc_num_lo=sqrt(e_inc_num_lo) )
+
+df<-mutate(df, rcpl_e_pop_num = 1/(df$e_pop_num + 1),rcpl_e_inc_num_lo=1/(df$e_inc_num_lo + 1) )
+
+hist.rt_e_pop_num <- ggplot(df, aes(rt_e_pop_num)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + labs(x =
+"log_e_pop_num", y = "Density") + stat_function(fun = dnorm, args =
+list(mean = mean(df$rt_e_pop_num, na.rm = TRUE), sd = sd(df$rt_e_pop_num, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("Population after square root transformation")+theme_bw()
+
+hist.rcpl_e_pop_num <- ggplot(df, aes(rcpl_e_pop_num)) + theme(legend.position = "none") + geom_histogram(aes(y = ..density..), colour = "black", fill = "white") + labs(x =
+"log_e_pop_num", y = "Density") + stat_function(fun = dnorm, args =
+list(mean = mean(df$rcpl_e_pop_num, na.rm = TRUE), sd = sd(df$rcpl_e_pop_num, na.rm = TRUE)), colour
+= "black", size = 1)+ggtitle("Population after reciprocal transformation")+theme_bw()
+
+grid.arrange(hist.rt_e_pop_num , hist.rcpl_e_pop_num,nrow = 2)
+
+```
+
+## Appendix-11
+```{r echo=FALSE}
+# outleiers
+log_out1<- df %>% 
+  ggplot(aes(x=seq(log_e_pop_num), y=log_e_pop_num)) + geom_point()+ggtitle("Population distribution after log transformation")+theme_bw()
+log_out2 <- df %>% 
+  ggplot(aes(x=seq(log_e_inc_num_lo), y=log_e_inc_num_lo)) + geom_point()+ggtitle("No of cases distribution after log transformation")+theme_bw()
+grid.arrange(log_out1, log_out2, nrow = 2)
+```
+
+
+
+
+```{r echo=FALSE}
+ df %>%  ggplot(aes(sample=log_e_pop_num)) + stat_qq() + geom_qq_line(aes(color="red")) + theme(legend.position = "none")+ggtitle("Checking normality of Population")+theme_bw()
+```
+
+
+
+```{r echo=FALSE}
+ df %>%  ggplot(aes(sample=log_e_inc_num_lo)) + stat_qq() + geom_qq_line(aes(color="red")) + theme(legend.position = "none")+ggtitle("Checking normality of no of cases expected")+theme_bw()
+```
+
+
+
+
+
+```{r echo=TRUE}
+
+stat.desc(df$log_e_pop_num, basic=FALSE, norm=TRUE)
+
+stat.desc(df$log_e_inc_num_lo, basic=FALSE, norm=TRUE)
+```
+
+## Appendix-12
+```{r}
+skew_e_pop_num<- stat.desc(df$log_e_pop_num, basic=FALSE, norm=TRUE)["skew.2SE"]
+skew_e_inc_num_lo<- stat.desc(df$log_e_inc_num_lo, basic=FALSE, norm=TRUE)["skew.2SE"]
+```
+
+## Appendix-13
+```{r echo=FALSE}
+test_log_e_pop_num<-shapiro.test(df$log_e_pop_num)
+test_log_e_pop_num
+test_log_e_inc_num_lo<-shapiro.test(df$log_e_inc_num_lo)
+#test_log_e_inc_num_lo$data.name
+#test_log_e_inc_num_lo$method
+#test_log_e_inc_num_lo$statistic
+#test_log_e_inc_num_lo$p.value
+test_log_e_inc_num_lo
+```
+
+
+## Appendix-14
+
+```{r}
+library(car)
+leveneTest(df$log_e_pop_num, df$year, center=mean)
+leveneTest(df$log_e_inc_num_lo, df$year, center=mean)
+```
+
+
+
+
+
+
+## Appendix-15
+
+
+```{r echo=TRUE}
+
+
+df %>% 
+  select(log_e_pop_num, log_e_inc_num_lo) %>% 
+  cor(use="complete.obs", method = "spearman")
+```
+
+
+## Appendix-16
+
+
+```{r echo=TRUE}
+cor.test(df$log_e_pop_num, df$log_e_inc_num_lo, method ="spearman")
+
+```
+
+
+## Appendix-17
+
+
+```{r echo=TRUE}
+e <- ggplot(budgetData, aes(e_pop_num, e_inc_num_lo))                    
+e+geom_smooth(method = lm)+ggtitle("No of cases Vs Population")+theme_bw()
+
+```
+
+
+## Appendix-18
+<http://www.sthda.com/english/wiki/scatter-plots-r-base-graphs>
+
+

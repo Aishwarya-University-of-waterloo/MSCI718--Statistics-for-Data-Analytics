@@ -1,0 +1,327 @@
+---
+title: "Individual Assignment4- Appendix"
+output: word_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr);library(tidyr);library(ggplot2);
+library(boot); library(car); library(QuantPsyc);
+library(ggfortify);
+dataset <- read.csv('melb_data.csv')
+
+```
+
+## Appendix - 1
+For latitude between -37.6 and -38.0 there are many houses,which would mean that it’s an ideal residential location.
+
+```{r echo=FALSE}
+scatter1 <- ggplot(dataset, aes(Lattitude,Propertycount))
+scatter1 + geom_jitter()
+
+```
+
+
+But when we talk about longitude we can see that concentration 
+is high between 144.8 to 145.1 (This is close to the location of CBD)
+```{r echo=FALSE}
+
+scatter2 <- ggplot(dataset, aes(Longtitude,Propertycount ))
+scatter2 + geom_jitter()
+```
+
+
+Given number of rooms between 3-5, there seems to be houses in all 
+price ranges. As the number of rooms increases we can find higher 
+price range houses. For 1-2 room houses there are lower price range houses
+
+```{r echo=FALSE}
+scatter3 <- ggplot(dataset, aes(Rooms,Price ))
+scatter3 + geom_jitter()
+```
+
+
+Closer to CBD, there are a number of houses with varying price range 
+Farther away, the number reduces drastically and the price too
+
+```{r echo=FALSE}
+scatter4 <- ggplot(dataset, aes(Distance,Price ))
+scatter4 + geom_point()
+```
+
+
+As the number of bathrooms becomes more than 4, the number of houses 
+decreases drastically. 
+
+
+```{r echo=FALSE}
+scatter5 <- ggplot(dataset, aes(Bathroom,Propertycount ))
+scatter5 + geom_jitter()
+```
+
+
+
+Initially, the price range increases as the number of bathrooms increases.
+
+```{r echo=FALSE}
+scatter6 <- ggplot(dataset, aes(Bathroom,Price ))
+scatter6 + geom_jitter()
+
+```
+
+People with 2 or 4 cars have been seen to be buying the costliest of houses 
+As people have more number of houses the price decreases
+
+```{r echo=FALSE}
+scatter7 <- ggplot(dataset, aes(Car,Price ))
+scatter7 + geom_jitter()
+```
+
+
+```{r echo=FALSE}
+scatter7 <- ggplot(dataset, aes(Car,Propertycount ))
+scatter7 + geom_jitter()
+```
+
+Landsize doesn't distinctly affect the price of a house
+
+```{r echo=FALSE}
+scatter8 <- ggplot(dataset, aes(Landsize,Price ))
+scatter8 + geom_jitter()
+```
+
+
+As building area increases we can see a slight shift of the range of the houses available
+
+```{r echo=FALSE}
+scatter9 <- ggplot(dataset, aes(BuildingArea,Propertycount ))
+scatter9 + geom_jitter()
+```
+
+
+
+
+## Appendix - 2
+
+```{r echo=FALSE}
+
+col <- ggplot(dataset, aes(Propertycount ,Type))
+col + geom_col() 
+
+
+```
+## Appendix - 3
+
+```{r echo=FALSE}
+col <- ggplot(dataset, aes(Price ,Type))
+col + geom_col() 
+```
+
+## Appendix - 4
+
+```{r echo=FALSE}
+dataset<-na.omit(dataset)
+
+dataset$Type[dataset$Type=='h']<-'House'
+dataset$Type[dataset$Type=='t']<-'NonHouse'
+dataset$Type[dataset$Type=='u']<-'NonHouse'
+
+
+
+dataset <- dataset %>%  filter (Suburb=='Reservoir'|Suburb=='Richmond'| Suburb=='Preston'|Suburb=='Brunswick'|Suburb=='Bentleigh East')
+```
+
+## Appendix -4b
+
+```{r echo=FALSE}
+
+dataset_new<- dataset %>% select_if(is.numeric)
+
+library(corrplot)
+res <- cor(dataset_new)
+#round(res, 2)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+```
+
+## Appendix -5
+
+```{r echo=FALSE}
+model.1<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance,   data = dataset,na.action=na.exclude)
+summary(model.1)
+```
+
+
+
+```{r echo=FALSE}
+autoplot(model.1, which = 1:6, label.size = 1)
+```
+
+
+
+```{r echo=FALSE}
+model.2<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance+Type,data = dataset,na.action=na.exclude)
+summary(model.2)
+```
+
+
+
+```{r}
+
+autoplot(model.2, which = 1:6, label.size = 1,  colour = 'Type')
+
+```
+
+```{r echo=FALSE}
+
+dataset$Price<- log(dataset$Price)
+
+dataset$Postcode<- log(dataset$Postcode)
+dataset$Rooms <- log(dataset$Rooms)
+dataset$Bathroom <- log(dataset$Bathroom)
+dataset$Distance <- log(dataset$Distance+1)
+dataset$BuildingArea <- log(dataset$BuildingArea)
+model.1<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance,   data = dataset,na.action=na.exclude)
+model.2<-lm(formula = Price ~ BuildingArea+Postcode+Rooms+Bathroom+Distance+Type,   data = dataset,na.action=na.exclude)
+```
+
+
+
+## Appendix - 6
+```{r}
+summary(model.1)
+```
+
+
+```{r}
+summary(model.2)
+```
+
+```{r}
+lm.beta(model.1)
+```
+
+
+```{r}
+lm.beta(model.2)
+```
+
+
+## Appendix -7
+
+```{r}
+dataset$residuals<-resid(model.1)  #page 323
+dataset$standardized.residuals<- rstandard(model.1) #page 324
+dataset$studentized.residuals<-rstudent(model.1)
+dataset$cooks.distance<-cooks.distance(model.1)
+dataset$dfbeta<-dfbeta(model.1)
+dataset$dffit<-dffits(model.1)
+dataset$leverage<-hatvalues(model.1)
+dataset$covariance.ratios<-covratio(model.1)
+
+
+e <- ggplot(dataset, aes(y=standardized.residuals, x=leverage))
+e+geom_point()
+
+```
+
+```{r}
+summary(dataset$cooks)
+```
+
+```{r}
+dataset$residuals<-resid(model.2)  #page 323
+dataset$standardized.residuals<- rstandard(model.2) #page 324
+dataset$studentized.residuals<-rstudent(model.2)
+dataset$cooks.distance<-cooks.distance(model.2)
+dataset$dfbeta<-dfbeta(model.2)
+dataset$dffit<-dffits(model.2)
+dataset$leverage<-hatvalues(model.2)
+dataset$covariance.ratios<-covratio(model.2)
+
+
+e <- ggplot(dataset, aes(y=standardized.residuals, x=leverage))
+e+geom_point()
+
+```
+```{r}
+summary(dataset$cooks)
+```
+
+## Appendix-8
+
+```{r}
+vif(model.1)
+1/vif(model.1)
+mean(vif(model.1))
+```
+
+```{r}
+vif(model.2)
+1/vif(model.2)
+mean(vif(model.2))
+```
+
+## Appendix -9 
+
+```{r}
+confint(model.2)
+```
+
+```{r}
+exp(confint(model.2))
+```
+
+## Appendix -10
+
+```{r}
+anova(model.1,model.2)
+```
+
+
+
+## Appendix -11
+
+### Price prediction
+
+```{r echo=FALSE}
+#builting area 120 to 1041
+#Postcode  3165    3056  3072
+#Rooms 3 2
+#Bathroom 2
+#Distance 12
+#BuildingArea+Postcode+Rooms+Bathroom+Distance+Type
+newdata = data.frame(BuildingArea=100,Postcode=3056,Rooms=3,Bathroom=2,Distance=12)
+log_newdata<-log(newdata)
+log_price=predict(model.1, log_newdata) 
+log_price
+```
+```{r}
+exp(log_price)
+```
+```{r}
+log_newdata
+```
+
+```{r}
+log_newdata$Type='House'
+```
+
+```{r }
+
+log_price=predict(model.2, log_newdata) 
+exp(log_price)
+```
+
+```{r}
+log_newdata$Type='NonHouse'
+```
+
+```{r}
+
+log_price=predict(model.2, log_newdata) 
+exp(log_price)
+```

@@ -1,0 +1,273 @@
+---
+title: "Individual Assignment3 - Appendix"
+output: word_document
+---
+# Data source:
+
+<https://www.consumerfinance.gov/data-research/consumer-complaints/search/api/v1/?company=BANK%20OF%20AMERICA%2C%20NATIONAL%20ASSOCIATION&date_received_max=2021-03-15&date_received_min=2011-12-01&field=all&format=csv&lens=overview&no_aggs=true&product=Bank%20account%20or%20service&product=Checking%20or%20savings%20account&size=27104&trend_depth=5&trend_interval=month>
+
+
+## Reference:
+
+[1] https://www.statisticssolutions.com/assumptions-of-linear-regression
+
+[2] "Discovering Statistics Using R" by Andy Field, Jeremy Miles, Zoe Field.
+
+
+## Appendix -1
+```{r echo=FALSE}
+path<-'C:\\Users\\SALONI\\OneDrive - University of Waterloo\\MSCI 718\\i-3\\complaints-final.csv'
+```
+
+```{r echo=TRUE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+dataset <- read.csv(path)
+```
+
+## Appendix -2
+
+```{r}
+dataset<- dataset %>% filter(Company=="BANK OF AMERICA, NATIONAL ASSOCIATION")
+dataset <- na.omit(dataset)
+
+dataset<-dataset %>% separate(Date.received, c("Split_Month","Split_Day","Split_Year"),remove=FALSE)
+dataset$Split_Year<- as.integer(dataset$Split_Year)
+dataset$Split_Month <- as.integer(dataset$Split_Month)
+dataset$Split_Year <- (dataset$Split_Year + 2000)
+
+all_years<-c(2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021)
+all_months<-c(1,2,3,4,5,6,7,8,9,10,11,12)
+all_quaters<-c(1,2,3,4)
+```
+
+## Appendix -3
+
+```{r echo=FALSE}
+#Month wise cases
+Month_wise_cases <- NULL
+time <- 0
+for (year in all_years) {
+  for (month in all_months) {
+    complains <- count(dataset %>% filter(Split_Month==month & Split_Year==year))
+    if(complains!=0){
+      time <- time + 1
+      Month_wise_cases <- rbind(Month_wise_cases, data.frame(year,month,time, complains))
+    }
+  }
+}
+
+Month_wise_cases$complains<- Month_wise_cases$n
+Month_wise_cases$n <- NULL
+Month_wise_cases
+```
+
+
+## Appendix -3
+
+```{r echo=FALSE}
+# yearwise cases
+Year_wise_cases <- NULL
+
+for (year in all_years) {
+  
+    complains <- count(dataset %>% filter( Split_Year==year))
+    if(complains!=0){
+         Year_wise_cases <- rbind(Year_wise_cases, data.frame(year, complains))
+    }
+  
+}
+Year_wise_cases
+```
+
+## Appendix -4
+one important assumption of the linear regression is that the relationship between the outcome and predictor variables is linear and additive. Here quarter and no of complains are strongly & positively related. Correlation can be given as:
+```{r echo=FALSE}
+dataset<- dataset %>%  filter(Split_Year!=2012 | Split_Month !=3)
+df <- NULL
+no_of_quarter <- 0
+for (year in all_years) {
+  for (quarter in all_quaters) {
+    if(quarter==1){
+       m1=1;m2=2;m3=3;
+    }
+    if(quarter==2){
+       m1=4;m2=5;m3=6;
+    }
+    if(quarter==3){
+       m1=7;m2=8;m3=9;
+    }
+    if(quarter==4){
+       m1=10;m2=11;m3=12;
+    }
+    complains <- count(dataset %>% filter((Split_Month==m1| Split_Month==m2|Split_Month==m3)& Split_Year==year))
+    if(complains!=0){
+      no_of_quarter <- no_of_quarter + 1
+      df <- rbind(df, data.frame(year,quarter,no_of_quarter, complains))
+    }
+  }
+}
+df$complains<- df$n
+df$n <- NULL
+#df
+```
+
+```{r}
+cor( df$no_of_quarter,df$complains)*100
+
+```
+
+## Appendix -5
+
+```{r echo=FALSE}
+regressor = lm(formula = complains ~ no_of_quarter,   data = df)
+summary(regressor)
+```
+
+## Appendix -6
+
+```{r echo=FALSE}
+confint(regressor)
+```
+
+## Appendix -7
+
+```{r}
+sigma(regressor)*100/mean(df$complains)
+```
+
+
+
+## Appendix -8
+
+```{r echo=FALSE}
+scatter.smooth(x=Month_wise_cases$time, y=Month_wise_cases$complains, main="complains ~ time")  # scatterplot
+```
+
+## Appendix -9
+
+```{r echo=FALSE}
+plot(regressor)
+```
+
+## Appendix -10
+
+```{r echo=FALSE}
+# assumption of homogenity of variance
+std.residuals <- (regressor$residuals-mean(regressor$residuals))/sd(regressor$residuals)
+std.fitted <- (regressor$fitted.values-mean(regressor$fitted.values))/sd(regressor$fitted.values)
+plot(std.residuals,std.fitted)
+
+```
+
+
+
+## Appendix -11
+
+```{r echo=FALSE}
+
+regressor$residuals<-resid(regressor)
+regressor$standardized.residuals<- rstandard(regressor)
+regressor$studentized.residuals<-rstudent(regressor)
+regressor$cooks.distance<-cooks.distance(regressor)
+regressor$dfbeta<-dfbeta(regressor)
+regressor$dffit<-dffits(regressor)
+regressor$leverage<-hatvalues(regressor)
+regressor$covariance.ratios<-covratio(regressor)
+
+regressor$large.residual <- regressor$standardized.residuals > 2 | regressor$standardized.residuals < -2
+
+
+sum(regressor$large.residual) 
+
+#regressor[regressor$large.residual,c("sales", "airplay", "attract", "adverts","standardized.residuals")]
+#regressor[regressor$large.residual , c("cooks.distance", "leverage", "covariance.ratios")]
+
+regressor$fitted <- regressor$fitted.values
+
+```
+
+## Appendix -12
+
+Assumption of normality
+```{r echo=FALSE}
+
+
+histogram<-ggplot(regressor, aes(regressor$studentized.residuals)) + 
+  theme(legend.position ="none") + 
+  geom_histogram(aes(y = ..density..), colour = "black", fill = "white") +
+  labs(x = "Studentized Residual", y = "Density")
+
+```
+
+```{r echo=FALSE}
+histogram +  stat_function(fun = dnorm, args = list(mean = mean(regressor$studentized.residuals, na.rm = TRUE), 
+                                         sd = sd(regressor$studentized.residuals, na.rm = TRUE)),
+  colour= "red", size = 1)
+
+```
+## Appendix -13
+
+```{r echo=FALSE}
+qqplot.resid <- qplot(sample = regressor$studentized.residuals, stat="qq") + 
+  labs(x ="Theoretical Values", y = "Observed Values") 
+qqplot.resid
+
+```
+## Appendix -14
+
+```{r echo=FALSE}
+scatter <- ggplot(regressor, aes(regressor$fitted, regressor$studentized.residuals))
+scatter + geom_point() + 
+  geom_smooth(method = "lm", colour = "Blue")+ 
+labs(x = "Fitted Values", y = "Studentized Residual")
+
+```
+
+
+
+## Appendix -15
+
+```{r echo=FALSE}
+init<-max(df$no_of_quarter)
+newValues=tibble(no_of_quarter=c(init+1,init+2,init+3,init+4,init+5,init+6,init+7))
+future_prediction<- predict.lm(regressor, newValues)
+future_prediction
+```
+
+## Appendix -16
+
+```{r echo=FALSE}
+val_2022 <- sum(future_prediction[4:7])
+val_2022
+```
+
+
+## Appendix -17
+
+```{r echo=FALSE}
+library(car)
+
+durbinWatsonTest(regressor)
+```
+
+## Appendix -18
+
+```{r echo=FALSE}
+df<-df
+
+fit <- lm(formula = complains ~ no_of_quarter,df)  
+#install.packages("boot")
+library(boot)
+bs=function(formula,data,indices){
+  d=data[indices,]
+  fit=lm(formula,data=d)
+  (coef(fit))
+}  
+results=boot(data=df,statistic=bs, R=2000,formula= complains ~ no_of_quarter)  
+boot.ci(results,type="bca",index=1)  
+boot.ci(results,type="bca",index=2)
+
+
+```
